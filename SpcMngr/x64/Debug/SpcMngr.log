@@ -1,0 +1,3 @@
+﻿  SpcMngr.cpp
+C:\Users\imans\source\repos\Utility\SpcMngr\SpcMngr.cpp(348,34): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  SpcMngr.vcxproj -> C:\Users\imans\source\repos\Utility\x64\Debug\SpcMngr.exe
