@@ -1,0 +1,3 @@
+﻿  BtryMngr.cpp
+C:\Users\imans\source\repos\Utility\BtryMngr\BtryMngr.cpp(96,75): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  BtryMngr.vcxproj -> C:\Users\imans\source\repos\Utility\x64\Debug\BtryMngr.exe
