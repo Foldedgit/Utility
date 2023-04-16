@@ -1,3 +1,4 @@
 ﻿  BtryMngr.cpp
-C:\Users\imans\source\repos\Utility\BtryMngr\BtryMngr.cpp(96,75): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\imans\source\repos\Utility\BtryMngr\BtryMngr.cpp(57,52): warning C4838: conversion from 'int' to 'DWORD' requires a narrowing conversion
+C:\Users\imans\source\repos\Utility\BtryMngr\BtryMngr.cpp(130,75): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
   BtryMngr.vcxproj -> C:\Users\imans\source\repos\Utility\x64\Debug\BtryMngr.exe
