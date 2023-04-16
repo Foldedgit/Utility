@@ -29,16 +29,45 @@ Author: Xus
 #include <chrono>
 #include <shlwapi.h>
 
+#pragma comment(lib, "winmm.lib")
 
 
 bool GetBatteryStatus(SYSTEM_POWER_STATUS& sps) {
     return GetSystemPowerStatus(&sps) != 0;
 }
 
+
+
+const double two_pi = 6.283185307179586476925286766559;
+const double max_amplitude = 32760;  // "volume"
+
+void SineWaveBeep(double frequency, int duration) {
+    HWAVEOUT hwo;
+    WAVEFORMATEX wfx = { WAVE_FORMAT_PCM, 1, 44100, 44100, 2, 16, 0 };
+    waveOutOpen(&hwo, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+
+    int samples = static_cast<int>(wfx.nSamplesPerSec * duration / 1000);
+    int dataSize = samples * sizeof(short);
+    short* data = new short[samples];
+
+    for (int i = 0; i < samples; ++i) {
+        data[i] = static_cast<short>(max_amplitude * std::sin(frequency * two_pi * i / wfx.nSamplesPerSec));
+    }
+
+    WAVEHDR hdr = { reinterpret_cast<LPSTR>(data), dataSize, 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hwo, &hdr, sizeof(hdr));
+    waveOutWrite(hwo, &hdr, sizeof(hdr));
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+    waveOutUnprepareHeader(hwo, &hdr, sizeof(hdr));
+
+    delete[] data;
+    waveOutClose(hwo);
+}
+
 void Beeps(int j) {
     for (int i = 0; i < j; ++i) {
-        Beep(2000, 700);
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        SineWaveBeep(3500, 100);
+        std::this_thread::sleep_for(std::chrono::milliseconds(70));
     }
 }
 
@@ -147,42 +176,47 @@ bool AddToStartup() {
 }
 
 
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {    
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    Beeps(2);
     if (!AddToStartup()) {
         MessageBox(NULL, L"Failed to add the program to startup. Please run this program as an administrator.", L"Error", MB_OK | MB_ICONERROR);
     }
+
     int prevBatteryPercent = 0;
     while (true) {
         SYSTEM_POWER_STATUS sps;
         if (GetBatteryStatus(sps)) {
             int currentBatteryPercent = sps.BatteryLifePercent;
             bool isConnectedToAC = sps.ACLineStatus == 1;
+            bool isBatteryPercentDifferenceSmall = std::abs(currentBatteryPercent - prevBatteryPercent) < 5;
 
-            while ((std::abs(currentBatteryPercent - prevBatteryPercent) < 5 &&
-                currentBatteryPercent < 95 &&  currentBatteryPercent > 31) ||
-                (isConnectedToAC &&  currentBatteryPercent < 32 &&
-                    std::abs(currentBatteryPercent - prevBatteryPercent) < 5)) {
+            bool inNormalRange = currentBatteryPercent < 95 && currentBatteryPercent > 31;
+            bool connectedToACAndLowBattery = isConnectedToAC && currentBatteryPercent < 32;
+            bool notConnectedToACAndHighBattery = !isConnectedToAC && currentBatteryPercent > 94;
+            bool notConnectedToACAndLowBattery = !isConnectedToAC && currentBatteryPercent < 32;
+            bool connectedToACAndHighBattery = isConnectedToAC && currentBatteryPercent > 94;
+            bool safezone = inNormalRange || connectedToACAndLowBattery || notConnectedToACAndHighBattery;
 
+            if (safezone && isBatteryPercentDifferenceSmall) {
                 std::this_thread::sleep_for(std::chrono::minutes(2));
-                GetBatteryStatus(sps);
-                currentBatteryPercent = sps.BatteryLifePercent;
-                isConnectedToAC = sps.ACLineStatus == 1;
+                continue;
             }
-            prevBatteryPercent = currentBatteryPercent;
 
-            if (isConnectedToAC && currentBatteryPercent > 94) {
+            if (notConnectedToACAndLowBattery || connectedToACAndHighBattery) {
                 Beeps(1);
             }
+
             std::wstring batteryPercentStr = std::to_wstring(currentBatteryPercent) + L"%";
             ShowBigMessage(batteryPercentStr);
             std::this_thread::sleep_for(std::chrono::minutes(1));
+            prevBatteryPercent = currentBatteryPercent;
         }
         else {
-            MessageBox(NULL, L"Failed to Get Battery Status", L"Error", MB_OK | MB_ICONERROR);            
+            MessageBox(NULL, L"Failed to Get Battery Status", L"Error", MB_OK | MB_ICONERROR);
             return 1;
         }
     }
 
     return 0;
 }
+
