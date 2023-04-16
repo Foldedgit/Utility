@@ -31,6 +31,24 @@ Author: Xus
 
 #pragma comment(lib, "winmm.lib")
 
+bool IsMonitorOffDueToInactivity() {
+    LASTINPUTINFO lii;
+    lii.cbSize = sizeof(LASTINPUTINFO);
+    GetLastInputInfo(&lii);
+
+    DWORD currentTime = GetTickCount();
+    DWORD idleTime = currentTime - lii.dwTime;
+
+    // Get the current system power settings
+    SYSTEM_POWER_STATUS sps;
+    GetSystemPowerStatus(&sps);
+
+    // Calculate the monitor timeout in milliseconds
+    DWORD monitorTimeoutMs = sps.BatteryLifeTime * 1000;
+
+    // Check if the idle time is greater than the monitor timeout
+    return (idleTime > monitorTimeoutMs);
+}
 
 bool GetBatteryStatus(SYSTEM_POWER_STATUS& sps) {
     return GetSystemPowerStatus(&sps) != 0;
@@ -177,7 +195,7 @@ bool AddToStartup() {
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    Beeps(2);
+    Beeps(1);
     if (!AddToStartup()) {
         MessageBox(NULL, L"Failed to add the program to startup. Please run this program as an administrator.", L"Error", MB_OK | MB_ICONERROR);
     }
@@ -203,11 +221,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
 
             if (notConnectedToACAndLowBattery || connectedToACAndHighBattery) {
-                Beeps(1);
+                    Beeps(2);
             }
 
-            std::wstring batteryPercentStr = std::to_wstring(currentBatteryPercent) + L"%";
-            ShowBigMessage(batteryPercentStr);
+             std::wstring batteryPercentStr = std::to_wstring(currentBatteryPercent) + L"%";
+             if (!IsMonitorOffDueToInactivity()) {
+                 ShowBigMessage(batteryPercentStr);
+             }
+
             std::this_thread::sleep_for(std::chrono::minutes(1));
             prevBatteryPercent = currentBatteryPercent;
         }
@@ -219,4 +240,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     return 0;
 }
-
